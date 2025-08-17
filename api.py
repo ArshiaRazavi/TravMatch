@@ -22,6 +22,17 @@ except Exception:
 
 app = FastAPI(title="TravMatch API", version=os.getenv("APP_VERSION", "dev"))
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# serve /static/*
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# make "/" show the UI
+@app.get("/", include_in_schema=False)
+def root():
+    return FileResponse("static/index.html")
+
 # CORS (open while prototyping)
 app.add_middleware(
     CORSMiddleware,
@@ -103,16 +114,19 @@ def search(
 
         results: List[Dict[str, Any]] = []
         for t, p in rows:
-            contacts = sorted(set((p.contact_handles or []) + (p.contact_phones or [])))  # small dedupe
+            contacts = sorted(set((p.contact_handles or []) + (p.contact_phones or [])))
+            route = f"{(t.origin_code or t.origin_city or '')}→{(t.destination_code or t.destination_city or '')}"
             results.append({
                 "message_id": p.message_id,
+                "chat_id": p.chat_id,                 # <-- add
                 "posted_at": p.posted_at,
                 "type": p.type_tag,
                 "origin": t.origin_city,
                 "origin_code": t.origin_code,
                 "destination": t.destination_city,
                 "destination_code": t.destination_code,
-                "date": (None if t.flight_date is None else t.flight_date.isoformat()) or t.flight_date_text,
+                "route": route,                       # <-- add
+                "date": (t.flight_date.isoformat() if t.flight_date else t.flight_date_text),
                 "time": t.flight_time_text,
                 "airline": t.airline,
                 "contacts": contacts,

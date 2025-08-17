@@ -20,6 +20,12 @@ GREG_MONTHS = {
     "jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"sept":9,"oct":10,"nov":11,"dec":12,
 }
 
+PERSIAN_GREG_MONTHS = {
+    "ژانویه":1, "فوریه":2, "مارس":3, "آوریل":4, "مه":5, "ژوئن":6,
+    "ژوئیه":7, "جولای":7, "اوت":8, "آگوست":8, "سپتامبر":9,
+    "اکتبر":10, "نوامبر":11, "دسامبر":12
+}
+
 JALALI_MONTHS = {
     "فروردین":1,"اردیبهشت":2,"خرداد":3,"تیر":4,"مرداد":5,"شهریور":6,
     "مهر":7,"آبان":8,"آذر":9,"دی":10,"بهمن":11,"اسفند":12
@@ -110,6 +116,23 @@ def parse_date_guess(s: str) -> str:
             return date(gy, gm, gd).isoformat()
         except:
             pass
+
+    # Persian month: "5 سپتامبر [1403|2025]" (year optional → assume current gregorian)
+    m = re.search(r"\b(\d{1,2})\s+(ژانویه|فوریه|مارس|آوریل|مه|ژوئن|ژوئیه|جولای|اوت|آگوست|سپتامبر|اکتبر|نوامبر|دسامبر)(?:\s+(\d{3,4}))?\b", t)
+    if m:
+        d = int(m.group(1)); mon = m.group(2)
+        y = int(m.group(3)) if m.group(3) else datetime.utcnow().year
+        try: return date(y, PERSIAN_GREG_MONTHS[mon], d).isoformat()
+        except: pass
+
+    # Persian month first: "سپتامبر 5 [2025]"
+    m = re.search(r"\b(ژانویه|فوریه|مارس|آوریل|مه|ژوئن|ژوئیه|جولای|اوت|آگوست|سپتامبر|اکتبر|نوامبر|دسامبر)\s+(\d{1,2})(?:\s+(\d{3,4}))?\b", t)
+    if m:
+        mon = m.group(1); d = int(m.group(2))
+        y = int(m.group(3)) if m.group(3) else datetime.utcnow().year
+        try: return date(y, PERSIAN_GREG_MONTHS[mon], d).isoformat()
+        except: pass
+
 
     # Numeric DD/MM(/YY) or MM/DD(/YY) → guess by a>12
     m = re.search(r"\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b", t)

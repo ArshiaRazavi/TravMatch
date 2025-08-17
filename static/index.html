@@ -61,6 +61,7 @@
             <th class="p-3 w-28">Airline</th>
             <th class="p-3 w-48">Contacts</th>
             <th class="p-3">Snippet</th>
+            <th class="p-3 w-16">Open</th>
           </tr>
         </thead>
         <tbody id="tbody" class="text-sm"></tbody>
@@ -126,16 +127,24 @@ async function load() {
     const contacts = (x.contacts||[]).map(c => 
       `<span class="copyable" title="Click to copy" onclick="navigator.clipboard.writeText('${c}')">${c}</span>`
     ).join("<br>");
+    const link = x.chat_id && x.message_id
+    ? (x.chat_id.toString().startsWith("-100")
+        ? `https://t.me/c/${x.chat_id.toString().slice(4)}/${x.message_id}`
+        : "")
+    : "";
+
     const tr = document.createElement("tr");
     tr.className = "border-t align-top";
     tr.innerHTML = `
-      <td class="p-3 font-medium">${(x.origin_code||"")}→${(x.destination_code||"")}</td>
-      <td class="p-3">${x.date || ""}</td>
-      <td class="p-3">${x.time || ""}</td>
-      <td class="p-3">${x.airline || ""}</td>
-      <td class="p-3 break-words">${contacts}</td>
-      <td class="p-3">${(x.snippet||"").replace(/\n/g," ")}</td>`;
-    tb.appendChild(tr);
+    <td class="p-3 font-medium">${x.route || ''}</td>
+    <td class="p-3">${x.date || ""}</td>
+    <td class="p-3">${x.time || ""}</td>
+    <td class="p-3">${x.airline || ""}</td>
+    <td class="p-3 break-words">${contacts}</td>
+    <td class="p-3" dir="auto">${(x.snippet||"").replace(/\n/g," ")}</td>
+    <td class="p-3">${link ? `<a class="text-blue-600" href="${link}" target="_blank">Open</a>` : ""}</td>
+    `;
+    tbody.appendChild(tr);
   }
 }
 
