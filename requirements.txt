@@ -1,0 +1,10 @@
+telethon
+python-dotenv
+sqlalchemy
+psycopg2-binary
+fastapi
+uvicorn
+pandas
+aiogram
+asyncpg
+
