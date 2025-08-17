@@ -8,3 +8,5 @@ __pycache__/
 # === Secrets / sessions ===
 .env
 *.session
+flights.csv
+*.csv

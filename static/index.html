@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" dir="auto">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>TravMatch — Search</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .copyable:hover{ text-decoration: underline; cursor: pointer; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="max-w-6xl mx-auto p-6">
+    <h1 class="text-2xl font-semibold mb-4">TravMatch — Search</h1>
+
+    <!-- Search form -->
+    <form id="form" class="grid md:grid-cols-6 gap-3 bg-white p-4 rounded-xl shadow">
+      <div>
+        <label class="block text-sm text-gray-600">Origin (IATA)</label>
+        <input id="origin" class="w-full border rounded-lg p-2" placeholder="THR / IKA / YYZ" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600">Destination (IATA)</label>
+        <input id="destination" class="w-full border rounded-lg p-2" placeholder="YYZ / YVR" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600">Date from</label>
+        <input id="date_from" type="date" class="w-full border rounded-lg p-2" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600">Date to</label>
+        <input id="date_to" type="date" class="w-full border rounded-lg p-2" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600">Airline</label>
+        <input id="airline" class="w-full border rounded-lg p-2" placeholder="Qatar / Emirates / ترکیش" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600">Free text (FA/EN)</label>
+        <input id="q" class="w-full border rounded-lg p-2" placeholder="تورنتو / North York / 9:30 pm" />
+      </div>
+
+      <div class="md:col-span-6 flex items-end gap-3">
+        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg" type="submit">Search</button>
+        <button id="reset" class="px-4 py-2 bg-gray-200 rounded-lg" type="button">Reset</button>
+        <div class="ml-auto text-sm text-gray-600">
+          <span id="stats"></span>
+        </div>
+      </div>
+    </form>
+
+    <!-- Results -->
+    <div class="mt-4 bg-white rounded-xl shadow overflow-hidden">
+      <div id="loading" class="hidden p-3 text-sm text-gray-600">Loading…</div>
+      <table class="w-full table-fixed">
+        <thead class="bg-gray-100 text-left text-sm">
+          <tr>
+            <th class="p-3 w-24">Route</th>
+            <th class="p-3 w-32">Flight Date</th>
+            <th class="p-3 w-20">Time</th>
+            <th class="p-3 w-28">Airline</th>
+            <th class="p-3 w-48">Contacts</th>
+            <th class="p-3">Snippet</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="text-sm"></tbody>
+      </table>
+      <div class="flex items-center justify-between border-t p-3">
+        <div class="text-sm text-gray-600" id="pageInfo"></div>
+        <div class="flex gap-2">
+          <button id="prev" class="px-3 py-1.5 bg-gray-200 rounded disabled:opacity-50" disabled>Prev</button>
+          <button id="next" class="px-3 py-1.5 bg-gray-200 rounded disabled:opacity-50" disabled>Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const inputs = ["origin","destination","date_from","date_to","airline","q"];
+const state = { offset: 0, limit: 20, total: 0 };
+
+function buildQuery() {
+  const params = new URLSearchParams();
+  params.set("limit", state.limit);
+  params.set("offset", state.offset);
+  for (const k of inputs) {
+    const v = $(k).value.trim();
+    if (v) params.set(k, v);
+  }
+  return "/search?" + params.toString();
+}
+
+function saveFilters() {
+  const data = {};
+  for (const k of inputs) data[k] = $(k).value;
+  localStorage.setItem("travmatch_filters", JSON.stringify(data));
+}
+
+function loadFilters() {
+  try {
+    const data = JSON.parse(localStorage.getItem("travmatch_filters")||"{}");
+    for (const k of inputs) if (data[k]) $(k).value = data[k];
+  } catch {}
+}
+
+async function load() {
+  saveFilters();
+  $("loading").classList.remove("hidden");
+  $("tbody").innerHTML = "";
+  const res = await fetch(buildQuery());
+  const data = await res.json();
+  $("loading").classList.add("hidden");
+
+  state.total = data.count || 0;
+  const rows = data.results || [];
+  $("stats").textContent = `${state.total} results`;
+  $("pageInfo").textContent = rows.length ? 
+    `Showing ${state.offset+1}–${state.offset+rows.length}` : "No results";
+
+  $("prev").disabled = state.offset === 0;
+  $("next").disabled = state.offset + rows.length >= state.total;
+
+  const tb = $("tbody");
+  for (const x of rows) {
+    const contacts = (x.contacts||[]).map(c => 
+      `<span class="copyable" title="Click to copy" onclick="navigator.clipboard.writeText('${c}')">${c}</span>`
+    ).join("<br>");
+    const tr = document.createElement("tr");
+    tr.className = "border-t align-top";
+    tr.innerHTML = `
+      <td class="p-3 font-medium">${(x.origin_code||"")}→${(x.destination_code||"")}</td>
+      <td class="p-3">${x.date || ""}</td>
+      <td class="p-3">${x.time || ""}</td>
+      <td class="p-3">${x.airline || ""}</td>
+      <td class="p-3 break-words">${contacts}</td>
+      <td class="p-3">${(x.snippet||"").replace(/\n/g," ")}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  state.offset = 0;
+  load();
+});
+$("reset").addEventListener("click", () => {
+  for (const k of inputs) $(k).value = "";
+  state.offset = 0;
+  load();
+});
+$("prev").addEventListener("click", () => {
+  state.offset = Math.max(0, state.offset - state.limit);
+  load();
+});
+$("next").addEventListener("click", () => {
+  state.offset = state.offset + state.limit;
+  load();
+});
+
+loadFilters();
+load();
+</script>
+</body>
+</html>
