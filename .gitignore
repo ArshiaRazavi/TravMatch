@@ -1,0 +1,10 @@
+# === Python / local ===
+__pycache__/
+*.pyc
+*.log
+.venv/
+.DS_Store
+
+# === Secrets / sessions ===
+.env
+*.session
