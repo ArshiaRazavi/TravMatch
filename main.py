@@ -172,7 +172,7 @@ async def main():
 
     flights = []  # list of dicts
 
-    async for m in client.iter_messages(entity, limit=1000):
+    async for m in client.iter_messages(entity, limit=10):
         print(f"Processing message {m.id}")
         
 
